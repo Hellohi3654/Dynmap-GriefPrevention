@@ -1,0 +1,20 @@
+plugins {
+    id 'org.spongepowered.plugin' version '0.8.1'
+}
+
+group = pluginGroup
+version = pluginVersion
+
+repositories {
+    mavenCentral()
+    maven { url = 'http://files.minecraftforge.net/maven/' }
+    maven { url = 'http://repo.mikeprimm.com' }
+}
+
+dependencies {
+    compile 'org.spongepowered:spongeapi:6.0.0'
+    compile 'us.dynmap:dynmap-api:3.0-SNAPSHOT'
+    compile 'me.ryanhamshire:griefprevention:1.12.1-4.3.0.473:api'
+}
+
+sponge.plugin.id = pluginId
