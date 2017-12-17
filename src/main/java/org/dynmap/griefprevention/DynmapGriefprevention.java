@@ -1,37 +1,42 @@
 package org.dynmap.griefprevention;
 
+import com.google.common.reflect.TypeToken;
 import com.google.inject.Inject;
 import me.ryanhamshire.griefprevention.GriefPrevention;
+import me.ryanhamshire.griefprevention.api.GriefPreventionApi;
 import me.ryanhamshire.griefprevention.api.claim.Claim;
-import org.dynmap.DynmapAPI;
+import me.ryanhamshire.griefprevention.api.claim.ClaimManager;
+import ninja.leaping.configurate.ConfigurationNode;
+import ninja.leaping.configurate.commented.CommentedConfigurationNode;
+import ninja.leaping.configurate.loader.ConfigurationLoader;
+import ninja.leaping.configurate.objectmapping.ObjectMappingException;
+import org.dynmap.DynmapCommonAPI;
+import org.dynmap.DynmapCommonAPIListener;
 import org.dynmap.markers.AreaMarker;
 import org.dynmap.markers.MarkerAPI;
 import org.dynmap.markers.MarkerSet;
 import org.slf4j.Logger;
-import org.spongepowered.api.entity.living.player.Player;
+import org.spongepowered.api.Sponge;
+import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.event.Listener;
-import org.spongepowered.api.event.filter.Getter;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
-import org.spongepowered.api.event.network.ClientConnectionEvent;
+import org.spongepowered.api.plugin.Dependency;
 import org.spongepowered.api.plugin.Plugin;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.format.TextColors;
-import org.spongepowered.api.text.format.TextStyles;
+import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.world.Location;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @Plugin(
         id = "dynmapgriefprevention",
-        name = "dynmapGriefprevention"
+        name = "Dynmap",
+        dependencies = { @Dependency(id = "Dynmap"), @Dependency(id = "griefprevention")}
 )
-public class dynmapGriefprevention {
+public class DynmapGriefprevention {
 
     @Inject private Logger logger;
 
@@ -40,94 +45,60 @@ public class dynmapGriefprevention {
     private static final String ADMIN_ID = "administrator";
     private boolean reload;
 
-    Plugin dynmap;
-    DynmapAPI api;
-    MarkerAPI markerapi;
-    GriefPrevention gp;
+    private DynmapCommonAPI dynmap;
+    private MarkerAPI markerapi;
+    private GriefPreventionApi gp;
 
-    FileConfiguration cfg;
-    MarkerSet set;
-    long updperiod;
-    boolean use3d;
-    String infowindow;
-    String admininfowindow;
-    AreaStyle defstyle;
-    Map<String, AreaStyle> ownerstyle;
-    Set<String> visible;
-    Set<String> hidden;
-    boolean stop;
-    int maxdepth;
+    @Inject()
+    @DefaultConfig(sharedRoot = true)
+    ConfigurationLoader<CommentedConfigurationNode> loader;
+
+    private ConfigurationNode cfg;
+
+    private MarkerSet set;
+    private long updperiod;
+    private boolean use3d;
+    private String infowindow;
+    private String admininfowindow;
+    private AreaStyle defstyle;
+    private Map<String, AreaStyle> ownerstyle;
+    private Set<String> visible;
+    private Set<String> hidden;
+    private boolean stop;
+    private int maxdepth;
 
     @Listener
     public void onServerStart(GameStartedServerEvent event) {
-        info("initializing");
-        PluginManager pm = getServer().getPluginManager();
-        /* Get dynmap */
-        dynmap = pm.getPlugin("dynmap");
-        if(dynmap == null) {
-            severe("Cannot find dynmap!");
-            return;
-        }
-        api = (DynmapAPI)dynmap; /* Get API */
-        /* Get GriefPrevention */
-        Plugin p = pm.getPlugin("GriefPrevention");
-        if(p == null) {
-            severe("Cannot find GriefPrevention!");
-            return;
-        }
-        gp = (GriefPrevention)p;
+        logger.info("initializing");
 
-        getServer().getPluginManager().registerEvents(new OurServerListener(), this);
-        /* If both enabled, activate */
-        if(dynmap.isEnabled() && gp.isEnabled())
-            activate();
+        gp = GriefPrevention.getApi();
 
-        try {
-            MetricsLite ml = new MetricsLite(this);
-            ml.start();
-        } catch (IOException iox) {
-        }
+        DynmapCommonAPIListener.register(new DynmapCommonAPIListener() {
+            @Override
+            public void apiEnabled(DynmapCommonAPI api) {
+                dynmap = api;
+                markerapi = api.getMarkerAPI();
+                try {
+                    cfg = loader.load();
+                    activate();
+                } catch (ObjectMappingException | IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 
-    private static class AreaStyle {
-        String strokecolor;
-        double strokeopacity;
-        int strokeweight;
-        String fillcolor;
-        double fillopacity;
-        String label;
-
-
-        AreaStyle(FileConfiguration cfg, String path, AreaStyle def) {
-            strokecolor = cfg.getString(path+".strokeColor", def.strokecolor);
-            strokeopacity = cfg.getDouble(path+".strokeOpacity", def.strokeopacity);
-            strokeweight = cfg.getInt(path+".strokeWeight", def.strokeweight);
-            fillcolor = cfg.getString(path+".fillColor", def.fillcolor);
-            fillopacity = cfg.getDouble(path+".fillOpacity", def.fillopacity);
-            label = cfg.getString(path+".label", null);
-        }
-
-        AreaStyle(FileConfiguration cfg, String path) {
-            strokecolor = cfg.getString(path+".strokeColor", "#FF0000");
-            strokeopacity = cfg.getDouble(path+".strokeOpacity", 0.8);
-            strokeweight = cfg.getInt(path+".strokeWeight", 3);
-            fillcolor = cfg.getString(path+".fillColor", "#FF0000");
-            fillopacity = cfg.getDouble(path+".fillOpacity", 0.35);
-        }
-    }
 
     private Map<String, AreaMarker> resareas = new HashMap<String, AreaMarker>();
 
-    private class GriefPreventionUpdate implements Runnable {
-        boolean repeat = true;
+    private class GriefPreventionUpdate implements Consumer<Task> {
 
-        public void run() {
+        @Override
+        public void accept(Task task) {
             if(!stop) {
-                //doUpdate = false;
                 updateClaims();
-                if (repeat) {
-                    getServer().getScheduler().scheduleSyncDelayedTask(DynmapGriefPreventionPlugin.this, new GriefPreventionUpdate(), updperiod);
-                }
+            } else {
+                task.cancel();
             }
         }
     }
@@ -138,13 +109,14 @@ public class dynmapGriefprevention {
             v = "<div class=\"regioninfo\">"+admininfowindow+"</div>";
         else
             v = "<div class=\"regioninfo\">"+infowindow+"</div>";
-        v = v.replace("%owner%", claim.isAdminClaim()?ADMIN_ID:claim.getOwnerName());
+        v = v.replace("%owner%", claim.isAdminClaim() ? ADMIN_ID : claim.getOwnerName().toPlain());
         v = v.replace("%area%", Integer.toString(claim.getArea()));
         ArrayList<String> builders = new ArrayList<String>();
         ArrayList<String> containers = new ArrayList<String>();
         ArrayList<String> accessors = new ArrayList<String>();
         ArrayList<String> managers = new ArrayList<String>();
-        claim.getPermissions(builders, containers, accessors, managers);
+        //claim.getPermissions()builders, containers, accessors, managers);
+
         /* Build builders list */
         String accum = "";
         for(int i = 0; i < builders.size(); i++) {
@@ -179,8 +151,8 @@ public class dynmapGriefprevention {
 
     private boolean isVisible(String owner, String worldname) {
         if((visible != null) && (visible.size() > 0)) {
-            if((visible.contains(owner) == false) && (visible.contains("world:" + worldname) == false) &&
-                    (visible.contains(worldname + "/" + owner) == false)) {
+            if((!visible.contains(owner)) && (!visible.contains("world:" + worldname)) &&
+                    (!visible.contains(worldname + "/" + owner))) {
                 return false;
             }
         }
@@ -205,7 +177,7 @@ public class dynmapGriefprevention {
         try {
             sc = Integer.parseInt(as.strokecolor.substring(1), 16);
             fc = Integer.parseInt(as.fillcolor.substring(1), 16);
-        } catch (NumberFormatException nfx) {
+        } catch (NumberFormatException ignored) {
         }
         m.setLineStyle(as.strokeweight, as.strokeopacity, sc);
         m.setFillStyle(as.fillopacity, fc);
@@ -215,7 +187,7 @@ public class dynmapGriefprevention {
     }
 
     /* Handle specific claim */
-    private void handleClaim(int index, Claim claim, Map<String, AreaMarker> newmap) {
+    private void handleClaim(Claim claim, Map<String, AreaMarker> newmap) {
         double[] x = null;
         double[] z = null;
         Location l0 = claim.getLesserBoundaryCorner();
@@ -233,8 +205,8 @@ public class dynmapGriefprevention {
             x[1] = l0.getX(); z[1] = l1.getZ() + 1.0;
             x[2] = l1.getX() + 1.0; z[2] = l1.getZ() + 1.0;
             x[3] = l1.getX() + 1.0; z[3] = l0.getZ();
-            Long id = claim.getID();
-            String markerid = "GP_" + Long.toHexString(id);
+            UUID id = claim.getUniqueId();
+            String markerid = "GP_" + id;
             AreaMarker m = resareas.remove(markerid); /* Existing area? */
             if(m == null) {
                 m = set.createAreaMarker(markerid, owner, false, wname, x, z, false);
@@ -266,36 +238,29 @@ public class dynmapGriefprevention {
     private void updateClaims() {
         Map<String,AreaMarker> newmap = new HashMap<String,AreaMarker>(); /* Build new map */
 
-        DataStore ds = gp.dataStore;
+        //final ArrayList<Claim> claims = new ArrayList<>();
 
-        ArrayList<Claim> claims = null;
-        try {
-            Field fld = DataStore.class.getDeclaredField("claims");
-            fld.setAccessible(true);
-            Object o = fld.get(ds);
-            claims = (ArrayList<Claim>)o;
-        } catch (NoSuchFieldException e) {
-        } catch (IllegalArgumentException e) {
-        } catch (IllegalAccessException e) {
-        }
+        Sponge.getServer().getWorlds().stream().map(gp::getClaimManager).map(ClaimManager::getWorldClaims).forEach(claims -> {
+            claims.forEach(claim -> handleClaim(claim, newmap));
+        });
+
         /* If claims, process them */
-        if(claims != null) {
+        /*if(claims != null) {
             int sz = claims.size();
-            for(int i = 0; i < sz; i++) {
-                Claim claim = claims.get(i);
-                handleClaim(i, claim, newmap);
+            for (Claim claim : claims) {
+                handleClaim(claim, newmap);
             }
+
             int idx = sz;
-            for(int i = 0; i < sz; i++) {
-                Claim claim = claims.get(i);
-                if((claim.children != null) && (claim.children.size() > 0)) {
-                    for(int j = 0; j < claim.children.size(); j++) {
+            for (Claim claim : claims) {
+                if ((claim.children != null) && (claim.children.size() > 0)) {
+                    for (int j = 0; j < claim.children.size(); j++) {
                         handleClaim(idx, claim.children.get(j), newmap);
                         idx++;
                     }
                 }
             }
-        }
+        }/*
         /* Now, review old map - anything left is gone */
         for(AreaMarker oldm : resareas.values()) {
             oldm.deleteMarker();
@@ -304,28 +269,16 @@ public class dynmapGriefprevention {
         resareas = newmap;
     }
 
-    private class OurServerListener implements Listener {
-        @EventHandler(priority=EventPriority.MONITOR)
-        public void onPluginEnable(PluginEnableEvent event) {
-            Plugin p = event.getPlugin();
-            String name = p.getDescription().getName();
-            if(name.equals("dynmap") || name.equals("GriefPrevention")) {
-                if(dynmap.isEnabled() && gp.isEnabled())
-                    activate();
-            }
-        }
-    }
-
-    private void activate() {
+    private void activate() throws ObjectMappingException {
         /* Now, get markers API */
-        markerapi = api.getMarkerAPI();
+        markerapi = dynmap.getMarkerAPI();
         if(markerapi == null) {
-            severe("Error loading dynmap marker API!");
+            logger.error("Error loading dynmap marker API!");
             return;
         }
         /* Load configuration */
         if(reload) {
-            reloadConfig();
+            //reloadConfig();
             if(set != null) {
                 set.deleteMarkerSet();
                 set = null;
@@ -342,55 +295,58 @@ public class dynmapGriefprevention {
         /* Now, add marker set for mobs (make it transient) */
         set = markerapi.getMarkerSet("griefprevention.markerset");
         if(set == null)
-            set = markerapi.createMarkerSet("griefprevention.markerset", cfg.getString("layer.name", "GriefPrevention"), null, false);
+            set = markerapi.createMarkerSet("griefprevention.markerset", cfg.getNode("layer", "name").getString("GriefPrevention"), null, false);
         else
-            set.setMarkerSetLabel(cfg.getString("layer.name", "GriefPrevention"));
+            set.setMarkerSetLabel(cfg.getNode("layer", "name").getString("GriefPrevention"));
         if(set == null) {
-            severe("Error creating marker set");
+            logger.error("Error creating marker set");
             return;
         }
-        int minzoom = cfg.getInt("layer.minzoom", 0);
+
+        int minzoom = cfg.getNode("layer", "minzoom").getInt(0);
         if(minzoom > 0)
             set.setMinZoom(minzoom);
-        set.setLayerPriority(cfg.getInt("layer.layerprio", 10));
-        set.setHideByDefault(cfg.getBoolean("layer.hidebydefault", false));
-        use3d = cfg.getBoolean("use3dregions", false);
-        infowindow = cfg.getString("infowindow", DEF_INFOWINDOW);
-        admininfowindow = cfg.getString("adminclaiminfowindow", DEF_ADMININFOWINDOW);
-        maxdepth = cfg.getInt("maxdepth", 16);
+
+        set.setLayerPriority(cfg.getNode("layer", "layerprio").getInt(10));
+        set.setHideByDefault(cfg.getNode("layer", "hidebydefault").getBoolean(false));
+        use3d = cfg.getNode("use3dregions").getBoolean(false);
+        infowindow = cfg.getNode("infowindow").getString(DEF_INFOWINDOW);
+        admininfowindow = cfg.getNode("adminclaiminfowindow").getString(DEF_ADMININFOWINDOW);
+        maxdepth = cfg.getNode("maxdepth").getInt(16);
 
         /* Get style information */
-        defstyle = new AreaStyle(cfg, "regionstyle");
+        defstyle = cfg.getNode("regionstyle").getValue(TypeToken.of(AreaStyle.class));
         ownerstyle = new HashMap<String, AreaStyle>();
-        ConfigurationSection sect = cfg.getConfigurationSection("ownerstyle");
-        if(sect != null) {
-            Set<String> ids = sect.getKeys(false);
 
-            for(String id : ids) {
-                ownerstyle.put(id.toLowerCase(), new AreaStyle(cfg, "ownerstyle." + id, defstyle));
-            }
+
+        ConfigurationNode sect = cfg.getNode("ownerstyle");
+        if(!sect.isVirtual()) {
+            Map<String, AreaStyle> map = sect.getValue(new TypeToken<Map<String, AreaStyle>>() {});
+
+            ownerstyle.putAll(map);
         }
-        List<String> vis = cfg.getStringList("visibleregions");
+
+        List<String> vis = cfg.getNode("visibleregions").getList(TypeToken.of(String.class));
         if(vis != null) {
             visible = new HashSet<String>(vis);
         }
-        List<String> hid = cfg.getStringList("hiddenregions");
+        List<String> hid = cfg.getNode("hiddenregions").getList(TypeToken.of(String.class));
         if(hid != null) {
             hidden = new HashSet<String>(hid);
         }
 
         /* Set up update job - based on periond */
-        int per = cfg.getInt("update.period", 300);
+        int per = cfg.getNode("update", "period").getInt(300);
         if(per < 15) per = 15;
-        updperiod = (long)(per*20);
         stop = false;
 
-        getServer().getScheduler().scheduleSyncDelayedTask(this, new GriefPreventionUpdate(), 40);   /* First time is 2 seconds */
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(per, TimeUnit.SECONDS).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
 
         //getServer().getPluginManager().registerEvents(new GPListener(), this);
 
-        info("version " + this.getDescription().getVersion() + " is activated");
+        logger.info("version " /*+ this.getDescription().getVersion()*/ + " is activated");
     }
+
 
     public void onDisable() {
         if(set != null) {

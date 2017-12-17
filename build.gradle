@@ -8,13 +8,12 @@ version = pluginVersion
 repositories {
     mavenCentral()
     maven { url = 'http://files.minecraftforge.net/maven/' }
-    maven { url = 'http://repo.mikeprimm.com' }
-}
+    maven { url 'https://jitpack.io' }}
 
 dependencies {
-    compile 'org.spongepowered:spongeapi:6.0.0'
-    compile 'us.dynmap:dynmap-api:3.0-SNAPSHOT'
-    compile 'me.ryanhamshire:griefprevention:1.12.1-4.3.0.473:api'
+    compile 'org.spongepowered:spongeapi:7.0.0-SNAPSHOT'
+    compile 'com.github.webbukkit:DynmapCoreAPI:v2.5'
+    compile 'me.ryanhamshire:griefprevention:1.12.2-4.3.0.505:api'
 }
 
 sponge.plugin.id = pluginId
