@@ -31,7 +31,6 @@ import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.api.world.Location;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -45,9 +44,23 @@ public class DynmapGriefprevention {
 
     @Inject private Logger logger;
 
-    private static final String DEF_INFOWINDOW = "<div class=\"infowindow\">Claim Owner: <span style=\"font-weight:bold;\">%owner%</span><br/>Permission Trust: <span style=\"font-weight:bold;\">%managers%</span><br/>Trust: <span "
-            + "style=\"font-weight:bold;\">%builders%</span><br/>Container Trust: <span style=\"font-weight:bold;\">%containers%</span><br/>Access Trust: <span style=\"font-weight:bold;\">%accessors%</span></div>";
-    private static final String DEF_ADMININFOWINDOW = "<div class=\"infowindow\"><span style=\"font-weight:bold;\">Administrator Claim</span><br/>Permission Trust: <span style=\"font-weight:bold;\">%managers%</span><br/>Trust: <span style=\"font-weight:bold;\">%builders%</span><br/>Container Trust: <span style=\"font-weight:bold;\">%containers%</span><br/>Access Trust: <span style=\"font-weight:bold;\">%accessors%</span></div>";
+    private static final String DEF_INFOWINDOW = "<div class=\"infowindow\">"
+            + "Name: <span style=\"font-weight:bold;\">%claimname%</span><br/>"
+            + "Owner: <span style=\"font-weight:bold;\">%owner%</span><br/>"
+            + "Type: <span style=\"font-weight:bold;\">%gptype%</span><br/>"
+            + "Last Seen: <span style=\"font-weight:bold;\">%lastseen%</span><br/>"
+            + "Permission Trust: <span style=\"font-weight:bold;\">%managers%</span><br/>"
+            + "Trust: <span style=\"font-weight:bold;\">%builders%</span><br/>"
+            + "Container Trust: <span style=\"font-weight:bold;\">%containers%</span><br/>"
+            + "Access Trust: <span style=\"font-weight:bold;\">%accessors%</span></div>";
+
+    private static final String DEF_ADMININFOWINDOW = "<div class=\"infowindow\">"
+            + "<span style=\"font-weight:bold;\">Administrator Claim</span><br/>"
+            + "Permission Trust: <span style=\"font-weight:bold;\">%managers%</span><br/>"
+            + "Trust: <span style=\"font-weight:bold;\">%builders%</span><br/>"
+            + "Container Trust: <span style=\"font-weight:bold;\">%containers%</span><br/>"
+            + "Access Trust: <span style=\"font-weight:bold;\">%accessors%</span></div>";
+
     private static final String ADMIN_ID = "administrator";
     private boolean reload;
 
@@ -75,10 +88,10 @@ public class DynmapGriefprevention {
 
     @Listener
     public void onServerStart(GameStartedServerEvent event) {
-        logger.info("initializing");
+        logger.info("Initializing");
 
         gp = GriefPrevention.getApi();
-        Sponge.getEventManager().registerListeners(this, this);
+
         DynmapCommonAPIListener.register(new DynmapCommonAPIListener() {
             @Override
             public void apiEnabled(DynmapCommonAPI api) {
@@ -117,6 +130,11 @@ public class DynmapGriefprevention {
             v = "<div class=\"regioninfo\">"+infowindow+"</div>";
         v = v.replace("%owner%", claim.isAdminClaim() ? ADMIN_ID : claim.getOwnerName().toPlain());
         v = v.replace("%area%", Integer.toString(claim.getArea()));
+        v = v.replace("%claimname%", claim.getData().getName().isPresent() ? claim.getName().get().toPlain() : "No Name Set");
+        v = v.replace("%lastseen%", claim.getData().getDateLastActive().toString());
+        v = v.replace("%gptype%", claim.getType().toString());
+
+        //claim.getData().getDateLastActive()
         ArrayList<String> builders = new ArrayList<String>();
         ArrayList<String> containers = new ArrayList<String>();
         ArrayList<String> accessors = new ArrayList<String>();
@@ -183,16 +201,16 @@ public class DynmapGriefprevention {
         int fc = 0xFF0000;
 
 
-        if (claim.getType().equals(ClaimType.ADMIN)) {
+        if (claim.getType().equals(ClaimType.ADMIN)) { // Red
             sc = 0xFF0000;
             fc = 0xFF0000;
-        } else if (claim.getType().equals(ClaimType.BASIC)) {
+        } else if (claim.getType().equals(ClaimType.BASIC)) { // Yellow
             sc = 0xFFFF00;
             fc = 0xFFFF00;
-        } else  if (claim.getType().equals(ClaimType.TOWN)) {
+        } else  if (claim.getType().equals(ClaimType.TOWN)) { // Green
             sc = 0x00FF00;
             fc = 0x00FF00;
-        } else  if (claim.getType().equals(ClaimType.SUBDIVISION)) {
+        } else  if (claim.getType().equals(ClaimType.SUBDIVISION)) { // Orange
             sc = 0xFF9C00;
             fc = 0xFF9C00;
         }
@@ -269,23 +287,6 @@ public class DynmapGriefprevention {
             claims.forEach(claim -> handleClaim(claim, newmap));
         });
 
-        /* If claims, process them */
-        /*if(claims != null) {
-            int sz = claims.size();
-            for (Claim claim : claims) {
-                handleClaim(claim, newmap);
-            }
-
-            int idx = sz;
-            for (Claim claim : claims) {
-                if ((claim.children != null) && (claim.children.size() > 0)) {
-                    for (int j = 0; j < claim.children.size(); j++) {
-                        handleClaim(idx, claim.children.get(j), newmap);
-                        idx++;
-                    }
-                }
-            }
-        }/*
         /* Now, review old map - anything left is gone */
         for(AreaMarker oldm : resareas.values()) {
             oldm.deleteMarker();
@@ -343,7 +344,6 @@ public class DynmapGriefprevention {
         defstyle = cfg.getNode("regionstyle").getValue(TypeToken.of(AreaStyle.class), new AreaStyle());
         ownerstyle = new HashMap<String, AreaStyle>();
 
-
         ConfigurationNode sect = cfg.getNode("ownerstyle");
         if(!sect.isVirtual()) {
             Map<String, AreaStyle> map = sect.getValue(new TypeToken<Map<String, AreaStyle>>() {});
@@ -365,11 +365,9 @@ public class DynmapGriefprevention {
         if(per < 15) per = 15;
         stop = false;
 
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
 
-        //getServer().getPluginManager().registerEvents(new GPListener(), this);
-
-        logger.info("version " /*+ this.getDescription().getVersion()*/ + " is activated");
+        logger.info("Dynmap Plugin for GriefPrevention  is activated");
     }
 
 
@@ -384,22 +382,16 @@ public class DynmapGriefprevention {
 
     @Listener(order = Order.POST)
     public void onClaimCreate(CreateClaimEvent event) {
-        System.out.println("Created Claim");
-        //updateClaims();
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(1, TimeUnit.SECONDS).submit(this);
     }
 
     @Listener(order = Order.POST)
     public void onClaimDelete(DeleteClaimEvent event) {
-        System.out.println("Deleted Claim");
-        //updateClaims();
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(1, TimeUnit.SECONDS).submit(this);
     }
 
     @Listener(order = Order.POST)
     public void onClaimChange(ChangeClaimEvent event) {
-        System.out.println("Changed Claim");
-        //updateClaims();
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(1, TimeUnit.SECONDS).submit(this);
     }
 }
