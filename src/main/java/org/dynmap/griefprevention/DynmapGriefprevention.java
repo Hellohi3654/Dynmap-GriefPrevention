@@ -340,7 +340,7 @@ public class DynmapGriefprevention {
         if(per < 15) per = 15;
         stop = false;
 
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(per, TimeUnit.SECONDS).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).interval(per, TimeUnit.SECONDS).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
 
         //getServer().getPluginManager().registerEvents(new GPListener(), this);
 
