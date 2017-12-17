@@ -6,6 +6,9 @@ import me.ryanhamshire.griefprevention.GriefPrevention;
 import me.ryanhamshire.griefprevention.api.GriefPreventionApi;
 import me.ryanhamshire.griefprevention.api.claim.Claim;
 import me.ryanhamshire.griefprevention.api.claim.ClaimManager;
+import me.ryanhamshire.griefprevention.api.event.ChangeClaimEvent;
+import me.ryanhamshire.griefprevention.api.event.CreateClaimEvent;
+import me.ryanhamshire.griefprevention.api.event.DeleteClaimEvent;
 import ninja.leaping.configurate.ConfigurationNode;
 import ninja.leaping.configurate.commented.CommentedConfigurationNode;
 import ninja.leaping.configurate.loader.ConfigurationLoader;
@@ -19,6 +22,7 @@ import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.DefaultConfig;
 import org.spongepowered.api.event.Listener;
+import org.spongepowered.api.event.Order;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
 import org.spongepowered.api.plugin.Dependency;
 import org.spongepowered.api.plugin.Plugin;
@@ -195,7 +199,7 @@ public class DynmapGriefprevention {
         if(l0 == null)
             return;
         String wname = claim.getWorld().getName();
-        String owner = claim.isAdminClaim()?ADMIN_ID:claim.getOwnerName().toString();
+        String owner = claim.isAdminClaim() ? ADMIN_ID : claim.getOwnerName().toString();
         /* Handle areas */
         if(isVisible(owner, wname)) {
             /* Make outline */
@@ -340,7 +344,7 @@ public class DynmapGriefprevention {
         if(per < 15) per = 15;
         stop = false;
 
-        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).interval(per, TimeUnit.SECONDS).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);   /* First time is 2 seconds */
 
         //getServer().getPluginManager().registerEvents(new GPListener(), this);
 
@@ -355,5 +359,20 @@ public class DynmapGriefprevention {
         }
         resareas.clear();
         stop = true;
+    }
+
+    @Listener(order = Order.POST)
+    public void onClaimCreate(CreateClaimEvent event) {
+        updateClaims();
+    }
+
+    @Listener(order = Order.POST)
+    public void onClaimDelete(DeleteClaimEvent event) {
+        updateClaims();
+    }
+
+    @Listener(order = Order.POST)
+    public void onClaimChange(ChangeClaimEvent event) {
+        updateClaims();
     }
 }

@@ -17,5 +17,5 @@ public class AreaStyle {
     @Setting("fillOpacity")
     double fillopacity = 0.35d;
     @Setting("label")
-    String label = "";
+    String label = "Derp";
 }
