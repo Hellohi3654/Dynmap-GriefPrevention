@@ -77,7 +77,7 @@ public class DynmapGriefprevention {
         logger.info("initializing");
 
         gp = GriefPrevention.getApi();
-
+        Sponge.getEventManager().registerListeners(this, this);
         DynmapCommonAPIListener.register(new DynmapCommonAPIListener() {
             @Override
             public void apiEnabled(DynmapCommonAPI api) {
