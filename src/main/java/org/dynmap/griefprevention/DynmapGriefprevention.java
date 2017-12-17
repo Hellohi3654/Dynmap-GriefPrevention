@@ -6,6 +6,7 @@ import me.ryanhamshire.griefprevention.GriefPrevention;
 import me.ryanhamshire.griefprevention.api.GriefPreventionApi;
 import me.ryanhamshire.griefprevention.api.claim.Claim;
 import me.ryanhamshire.griefprevention.api.claim.ClaimManager;
+import me.ryanhamshire.griefprevention.api.claim.ClaimType;
 import me.ryanhamshire.griefprevention.api.event.ChangeClaimEvent;
 import me.ryanhamshire.griefprevention.api.event.CreateClaimEvent;
 import me.ryanhamshire.griefprevention.api.event.DeleteClaimEvent;
@@ -174,16 +175,35 @@ public class DynmapGriefprevention {
         if(!ownerstyle.isEmpty()) {
             as = ownerstyle.get(owner.toLowerCase());
         }
+
         if(as == null)
             as = defstyle;
 
         int sc = 0xFF0000;
         int fc = 0xFF0000;
-        try {
+
+
+        if (claim.getType().equals(ClaimType.ADMIN)) {
+            sc = 0xFF0000;
+            fc = 0xFF0000;
+        } else if (claim.getType().equals(ClaimType.BASIC)) {
+            sc = 0xFFFF00;
+            fc = 0xFFFF00;
+        } else  if (claim.getType().equals(ClaimType.TOWN)) {
+            sc = 0x00FF00;
+            fc = 0x00FF00;
+        } else  if (claim.getType().equals(ClaimType.SUBDIVISION)) {
+            sc = 0xFF9C00;
+            fc = 0xFF9C00;
+        }
+
+        /* ** Disabling this because I want to specify color directly for each type of zone.
+            try {
             sc = Integer.parseInt(as.strokecolor.substring(1), 16);
             fc = Integer.parseInt(as.fillcolor.substring(1), 16);
         } catch (NumberFormatException ignored) {
-        }
+        } */
+
         m.setLineStyle(as.strokeweight, as.strokeopacity, sc);
         m.setFillStyle(as.fillopacity, fc);
         if(as.label != null) {
@@ -364,16 +384,22 @@ public class DynmapGriefprevention {
 
     @Listener(order = Order.POST)
     public void onClaimCreate(CreateClaimEvent event) {
-        updateClaims();
+        System.out.println("Created Claim");
+        //updateClaims();
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
     }
 
     @Listener(order = Order.POST)
     public void onClaimDelete(DeleteClaimEvent event) {
-        updateClaims();
+        System.out.println("Deleted Claim");
+        //updateClaims();
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
     }
 
     @Listener(order = Order.POST)
     public void onClaimChange(ChangeClaimEvent event) {
-        updateClaims();
+        System.out.println("Changed Claim");
+        //updateClaims();
+        Sponge.getScheduler().createTaskBuilder().execute(new GriefPreventionUpdate()).delay(2, TimeUnit.SECONDS).submit(this);
     }
 }
