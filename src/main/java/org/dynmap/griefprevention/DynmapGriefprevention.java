@@ -60,7 +60,7 @@ public class DynmapGriefprevention {
     private boolean use3d;
     private String infowindow;
     private String admininfowindow;
-    private AreaStyle defstyle;
+    private AreaStyle defstyle = new AreaStyle();
     private Map<String, AreaStyle> ownerstyle;
     private Set<String> visible;
     private Set<String> hidden;
@@ -315,7 +315,7 @@ public class DynmapGriefprevention {
         maxdepth = cfg.getNode("maxdepth").getInt(16);
 
         /* Get style information */
-        defstyle = cfg.getNode("regionstyle").getValue(TypeToken.of(AreaStyle.class));
+        defstyle = cfg.getNode("regionstyle").getValue(TypeToken.of(AreaStyle.class), new AreaStyle());
         ownerstyle = new HashMap<String, AreaStyle>();
 
 
