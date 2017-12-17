@@ -34,7 +34,7 @@ import java.util.function.Consumer;
 @Plugin(
         id = "dynmapgriefprevention",
         name = "Dynmap",
-        dependencies = { @Dependency(id = "Dynmap"), @Dependency(id = "griefprevention")}
+        dependencies = { @Dependency(id = "dynmap"), @Dependency(id = "griefprevention")}
 )
 public class DynmapGriefprevention {
 
