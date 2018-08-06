@@ -1,0 +1,14 @@
+[
+    {
+        "modid": "dynmapgriefprevention",
+        "name": "Dynmap-GriefPrevention",
+        "version": "[GP.4.3.x]-1.1-SNAPSHOT",
+        "description": "A light-weight addon for Dynmap to show Grief Prevention Claims",
+        "url": "http://almuramc.com",
+        "authorList": [
+            "AlmuraDev",
+            "MikePrimm"
+        ],
+        "credits": "Copyright (C) AlmuraDev and contributors, MikePrimm for Dynmap, Waterpicker for original conversion"
+    }
+]
