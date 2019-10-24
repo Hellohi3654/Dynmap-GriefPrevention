@@ -67,9 +67,6 @@ public class DynmapGriefprevention {
 
     private static Config config;
 
-    //Old config code
-    //private ConfigurationNode cfg;
-
     private MarkerSet markerSet;
 
     private Map<String, AreaMarker> markersById = new HashMap<>();
@@ -104,8 +101,6 @@ public class DynmapGriefprevention {
                 dynmap = api;
                 markerapi = api.getMarkerAPI();
 
-                // Old config code
-                //cfg = loader.load();
                 activate();
             }
         });
@@ -365,67 +360,12 @@ public class DynmapGriefprevention {
         // Set up update job - based on period
         if(config.updatePeriod < 15)
             config.updatePeriod = 15;
-
-        /* Old config code - replaced by Config class
-        // These 3 lines below are outdated pre-Sponge config save/load code
-        //FileConfiguration cfg = getConfig();
-        //cfg.options().copyDefaults(true);   // Load defaults, if needed
-        //this.saveConfig();  // Save updates, if needed
-
-        // Now, add marker set for mobs (make it transient)
-        markerSet = markerapi.getMarkerSet("griefprevention.markerset");
-        if(markerSet == null)
-            markerSet = markerapi.createMarkerSet("griefprevention.markerset", cfg.getNode("layer", "name").getString("GriefPrevention"), null, false);
-        else
-            markerSet.setMarkerSetLabel(cfg.getNode("layer", "name").getString("GriefPrevention"));
-        if(markerSet == null) {
-            logger.error("Error creating marker set");
-            return;
-        }
-
-        int minzoom = cfg.getNode("layer", "minzoom").getInt(0);
-        if(minzoom > 0)
-            markerSet.setMinZoom(minzoom);
-
-        markerSet.setLayerPriority(cfg.getNode("layer", "layerprio").getInt(10));
-        markerSet.setHideByDefault(cfg.getNode("layer", "hidebydefault").getBoolean(false));
-        use3d = cfg.getNode("use3dregions").getBoolean(false);
-        infowindow = cfg.getNode("infowindow").getString(DEF_INFOWINDOW);
-        admininfowindow = cfg.getNode("adminclaiminfowindow").getString(DEF_ADMININFOWINDOW);
-        maxdepth = cfg.getNode("maxdepth").getInt(16);
-
-        // Get style information
-        defstyle = cfg.getNode("regionstyle").getValue(TypeToken.of(AreaStyle.class), new AreaStyle());
-        ownerstyle = new HashMap<String, AreaStyle>();
-
-        ConfigurationNode sect = cfg.getNode("ownerstyle");
-        if(!sect.isVirtual()) {
-            Map<String, AreaStyle> map = sect.getValue(new TypeToken<Map<String, AreaStyle>>() {});
-
-            ownerstyle.putAll(map);
-        }
-
-        List<String> vis = cfg.getNode("visibleregions").getList(TypeToken.of(String.class));
-        if(vis != null) {
-            visible = new HashSet<String>(vis);
-        }
-        List<String> hid = cfg.getNode("hiddenregions").getList(TypeToken.of(String.class));
-        if(hid != null) {
-            hidden = new HashSet<String>(hid);
-        }
-
-        // Set up update job - based on period
-        int per = cfg.getNode("update", "period").getInt(300);
-        if(per < 15) per = 15;
-        */
     }
 
     public void saveConfig() {
         try {
             loader.save(loader.createEmptyNode().setValue(Config.TYPE, config));
 
-            // Old config code
-            //loader.save(cfg);
         } catch (ObjectMappingException | IOException e) {
             logger.warn("Error saving configuration.", e);
         }
