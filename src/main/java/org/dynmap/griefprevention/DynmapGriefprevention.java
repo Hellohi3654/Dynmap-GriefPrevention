@@ -273,6 +273,11 @@ public class DynmapGriefprevention {
 
             /* Add to map */
             newmap.put(markerid, m);
+            
+            List<Claim> subclaims = claim.getChildren(false);
+            for(Claim subclaim : subclaims) {
+                handleClaim(subclaim, newMap);
+            }
         }
     }
 
