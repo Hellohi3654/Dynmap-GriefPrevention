@@ -34,4 +34,4 @@ jobs:
       if: success()
       with:
           name: GriefPrevention-Dynmap
-          path: /
+          path: build/
