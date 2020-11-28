@@ -1,5 +1,5 @@
 name: GriefPreventionDynmap
-main: com.opal.griefpreventiondynmap.DynmapGriefprevention
+main: org.dynmap.griefprevention.DynmapGriefprevention
 version: 1.0
 authors: [Hellohi3654]
 depend: [ dynmap, GriefPrevention ]
