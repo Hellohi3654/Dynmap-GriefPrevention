@@ -92,4 +92,4 @@ public class Config{
 
     @Setting("updatePeriod")
     int updatePeriod = 300;
-}
+} 
